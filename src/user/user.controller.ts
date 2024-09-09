@@ -10,7 +10,11 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ObjectId } from 'mongoose';
-import { CreateUserDTO, UserSearchQueryDTO } from './dto/userDTOs';
+import {
+  CreateUserDTO,
+  UpdateUserDTO,
+  UserSearchQueryDTO,
+} from './dto/userDTOs';
 import { USER_ROLES } from 'src/common/constants/user.constants';
 
 @Controller('user')
@@ -34,7 +38,7 @@ export class UserController {
   }
 
   @Patch('/:id')
-  update(@Param('id') userId: ObjectId, @Body() updatedUser: CreateUserDTO) {
+  update(@Param('id') userId: ObjectId, @Body() updatedUser: UpdateUserDTO) {
     return this.userService.update(userId, updatedUser);
   }
 
