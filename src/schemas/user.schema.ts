@@ -7,7 +7,7 @@ export class User {
   @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true })
   @IsEmail()
   email: string;
 
@@ -17,19 +17,13 @@ export class User {
   @Prop()
   profilePic: string;
 
-  @Prop({ required: true })
-  createdAt: Date;
-
-  @Prop({ required: true })
-  updatedAt: Date;
-
-  @Prop({ required: true })
+  @Prop({ default: null })
   deletedAt: Date;
 
-  @Prop({ required: true, default: false })
+  @Prop({ required: true, default: true })
   isActive: boolean;
 
-  @Prop({ required: true })
+  @Prop({ default: () => new Date() })
   roleLastUpdatedAt: Date;
 }
 
