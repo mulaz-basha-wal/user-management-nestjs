@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { User } from 'src/schemas/user.schema';
@@ -7,36 +7,76 @@ import {
   UpdateUserDTO,
   UserSearchQueryDTO,
 } from './dto/userDTOs';
+import { ERROR_MESSAGES } from 'src/common/constants/user.constants';
+import { errorHandler } from 'src/common/utils/apiErrorHandler';
 
 @Injectable()
 export class UserService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
-  async create(createUserDto: CreateUserDTO): Promise<User> {
-    const createdUser = new this.userModel(createUserDto);
-    return createdUser.save();
+  async create(newUser: CreateUserDTO): Promise<User> {
+    try {
+      const userExist = await this.userModel.findOne({ email: newUser.email });
+      if (userExist) throw new ConflictException(ERROR_MESSAGES.USER_EXIST);
+      return await this.userModel.create(newUser);
+    } catch (error) {
+      if (error instanceof ConflictException) throw error;
+      errorHandler(error, ERROR_MESSAGES.USER_CREATION_FAILED);
+    }
   }
 
   async findAll(query: UserSearchQueryDTO): Promise<User[]> {
-    const _query = this.userModel.find();
-    if (query.page && query.limit) {
-      const skipPages = query.page - 1;
-      _query.limit(query.limit).skip(skipPages * query.limit);
+    try {
+      query.page = query.page || 1;
+      query.limit = query.limit || 5;
+
+      let queryOptions = null;
+      if (query.name) {
+        const regexPattern = new RegExp(query.name, 'i');
+        queryOptions = {
+          $or: [
+            { firstName: { $regex: regexPattern } },
+            { lastName: { $regex: regexPattern } },
+          ],
+        };
+      }
+
+      return await this.userModel
+        .find(queryOptions ?? {})
+        .limit(query.limit)
+        .skip((query.page - 1) * query.limit);
+    } catch (error) {
+      errorHandler(error, ERROR_MESSAGES.USER_FETCH_FAILED);
     }
-    return _query.sort({ age: 1 }).exec();
   }
 
   async findOne(userId: ObjectId): Promise<User> {
-    return await this.userModel.findOne({ _id: userId });
+    try {
+      return await this.userModel.findOne({ _id: userId });
+    } catch (error) {
+      errorHandler(error, ERROR_MESSAGES.USER_FETCH_FAILED);
+    }
   }
 
   async update(userId: ObjectId, updatedUser: UpdateUserDTO): Promise<User> {
-    return await this.userModel.findOneAndUpdate({ _id: userId }, updatedUser, {
-      new: true,
-    });
+    try {
+      const user = await this.userModel.findOne({ _id: userId });
+      if (!user) throw new ConflictException(ERROR_MESSAGES.USER_NOT_EXIST);
+      return await this.userModel.findOneAndUpdate(
+        { _id: userId },
+        updatedUser,
+        { new: true },
+      );
+    } catch (error) {
+      errorHandler(error, ERROR_MESSAGES.USER_UPDATE_FAILED);
+    }
   }
 
   async delete(userId: ObjectId): Promise<User[]> {
-    return this.userModel.findOneAndDelete({ _id: userId });
+    try {
+      return this.userModel.findOneAndDelete({ _id: userId });
+    } catch (error) {
+      errorHandler(error, ERROR_MESSAGES.USER_DELETE_FAILED);
+    }
   }
 }
