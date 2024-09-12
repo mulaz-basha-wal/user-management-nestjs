@@ -17,7 +17,11 @@ import { USER_ROLES } from 'src/common/constants/user.constants';
 export class CreateUserDTO {
   @IsString()
   @IsOptional()
-  name: string;
+  firstName: string;
+
+  @IsString()
+  @IsOptional()
+  lastName: string;
 
   @IsEmail({}, { message: 'Invalid email address' })
   email: string;
@@ -80,6 +84,14 @@ export class UserSearchQueryDTO {
   @Type(() => Number)
   @IsOptional()
   limit: number;
+
+  @IsString()
+  @IsOptional()
+  name: string;
+
+  @IsEmail()
+  @IsOptional()
+  email: string;
 }
 
 export class UpdateUserDTO extends PartialType(CreateUserDTO) {}
