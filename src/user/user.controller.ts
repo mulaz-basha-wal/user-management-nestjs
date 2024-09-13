@@ -35,6 +35,11 @@ export class UserController {
     return this.userService.findAll(query);
   }
 
+  @Get('/count')
+  count(@Query() query: UserSearchQueryDTO) {
+    return this.userService.countOfUsers(query);
+  }
+
   @Get('/:id')
   findOne(@Param('id') userId: ObjectId) {
     return this.userService.findOne(userId);

@@ -71,3 +71,10 @@ UserSchema.pre('save', async function (next) {
     return next();
   }
 });
+
+UserSchema.set('toJSON', {
+  transform: function (doc, record) {
+    delete record.password;
+    return record;
+  },
+});
