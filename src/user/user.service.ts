@@ -14,10 +14,13 @@ import { errorHandler } from 'src/common/utils/apiErrorHandler';
 export class UserService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
-  async create(newUser: CreateUserDTO): Promise<User> {
+  async create(newUser: CreateUserDTO, isExit: boolean = true): Promise<User> {
     try {
       const userExist = await this.userModel.findOne({ email: newUser.email });
-      if (userExist) throw new ConflictException(ERROR_MESSAGES.USER_EXIST);
+      if (userExist && !isExit) return;
+      if (userExist && isExit) {
+        throw new ConflictException(ERROR_MESSAGES.USER_EXIST);
+      }
       return await this.userModel.create(newUser);
     } catch (error) {
       if (error instanceof ConflictException) throw error;

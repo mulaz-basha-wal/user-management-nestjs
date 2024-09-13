@@ -6,6 +6,7 @@ import { configuration, validationSchema } from './config';
 import { UserModule } from './user/user.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { LoggerModule } from './my-logger/my-logger.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { LoggerModule } from './my-logger/my-logger.module';
     MongooseModule.forRoot(process.env.MONGODB_URI),
     UserModule,
     LoggerModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

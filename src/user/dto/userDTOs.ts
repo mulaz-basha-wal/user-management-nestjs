@@ -54,17 +54,17 @@ export class CreateUserDTO {
   @IsOptional()
   @IsDate()
   @Type(() => Date)
-  createdAt: Date;
+  createdAt: string;
 
   @IsDate()
   @Type(() => Date)
   @IsOptional()
-  updatedAt: Date;
+  updatedAt: string;
 
   @IsDate()
   @Type(() => Date)
   @IsOptional()
-  deletedAt: Date;
+  deletedAt: string;
 
   @IsBoolean()
   @IsOptional()
@@ -73,7 +73,7 @@ export class CreateUserDTO {
   @IsDate()
   @Type(() => Date)
   @IsOptional()
-  roleLastUpdatedAt: Date;
+  roleLastUpdatedAt: string;
 }
 
 export class UserSearchQueryDTO {

@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ObjectId } from 'mongoose';
@@ -17,6 +18,7 @@ import {
 } from './dto/userDTOs';
 import { USER_ROLES } from 'src/common/constants/user.constants';
 import { MyLogger } from 'src/my-logger/my-logger.service';
+import { IsAuthenticated } from 'src/auth/auth.guard';
 
 @Controller('user')
 export class UserController {
@@ -30,6 +32,7 @@ export class UserController {
   }
 
   @Get()
+  @UseGuards(IsAuthenticated)
   findAll(@Query() query: UserSearchQueryDTO) {
     this.logger.log(`Request for All users`, UserController.name);
     return this.userService.findAll(query);
