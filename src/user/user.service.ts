@@ -14,10 +14,13 @@ import { errorHandler } from 'src/common/utils/apiErrorHandler';
 export class UserService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
-  async create(newUser: CreateUserDTO): Promise<User> {
+  async create(newUser: CreateUserDTO, isExit: boolean = true): Promise<User> {
     try {
       const userExist = await this.userModel.findOne({ email: newUser.email });
-      if (userExist) throw new ConflictException(ERROR_MESSAGES.USER_EXIST);
+      if (userExist && !isExit) return;
+      if (userExist && isExit) {
+        throw new ConflictException(ERROR_MESSAGES.USER_EXIST);
+      }
       return await this.userModel.create(newUser);
     } catch (error) {
       if (error instanceof ConflictException) throw error;
@@ -50,6 +53,25 @@ export class UserService {
     }
   }
 
+  async countOfUsers(query: UserSearchQueryDTO): Promise<{ count: number }> {
+    try {
+      let queryOptions = null;
+      if (query.name) {
+        const regexPattern = new RegExp(query.name, 'i');
+        queryOptions = {
+          $or: [
+            { firstName: { $regex: regexPattern } },
+            { lastName: { $regex: regexPattern } },
+          ],
+        };
+      }
+
+      return { count: await this.userModel.countDocuments(queryOptions ?? {}) };
+    } catch (error) {
+      errorHandler(error, ERROR_MESSAGES.USER_FETCH_FAILED);
+    }
+  }
+
   async findOne(userId: ObjectId): Promise<User> {
     try {
       return await this.userModel.findOne({ _id: userId });
@@ -72,9 +94,10 @@ export class UserService {
     }
   }
 
-  async delete(userId: ObjectId): Promise<User[]> {
+  async delete(userId: ObjectId): Promise<{ message: string }> {
     try {
-      return this.userModel.findOneAndDelete({ _id: userId });
+      await this.userModel.findOneAndDelete({ _id: userId });
+      return { message: ERROR_MESSAGES.USER_DELETED };
     } catch (error) {
       errorHandler(error, ERROR_MESSAGES.USER_DELETE_FAILED);
     }

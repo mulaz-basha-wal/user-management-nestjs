@@ -10,7 +10,7 @@ export class User extends Document {
   @Prop({ required: true })
   firstName: string;
 
-  @Prop({ required: true })
+  @Prop({ required: false, default: null })
   lastName: string;
 
   @Prop({ required: true, unique: true })
@@ -48,7 +48,7 @@ export class User extends Document {
       },
       process.env.JWT_SECRET,
       {
-        expiresIn: process.env.JWT_EXPIRY || '1d',
+        expiresIn: process.env.JWT_EXPIRES_IN || '1d',
       },
     );
     return token;
@@ -70,4 +70,11 @@ UserSchema.pre('save', async function (next) {
   } else {
     return next();
   }
+});
+
+UserSchema.set('toJSON', {
+  transform: function (doc, record) {
+    delete record.password;
+    return record;
+  },
 });

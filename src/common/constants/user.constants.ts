@@ -9,5 +9,6 @@ export const ERROR_MESSAGES = {
   USER_FETCH_FAILED: 'Unable to fetch user(s).',
   USER_UPDATE_FAILED: 'Unable to update user.',
   USER_DELETE_FAILED: 'Unable to delete user.',
+  USER_DELETED: 'User deleted successfully.',
   USER_CREATION_FAILED: 'Unable to register, please try again after sometime.',
 };
