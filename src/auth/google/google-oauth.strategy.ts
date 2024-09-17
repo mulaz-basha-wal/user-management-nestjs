@@ -2,7 +2,6 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy } from 'passport-google-oauth20';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-// import { UserService } from 'src/user/user.service';
 
 @Injectable()
 export class GoogleOauthStrategy extends PassportStrategy(Strategy, 'google') {
@@ -12,7 +11,6 @@ export class GoogleOauthStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: configService.get('GOOGLE_OAUTH_CLIENT_SECRET'),
       callbackURL: configService.get('GOOGLE_OAUTH_REDIRECT_URL'),
       scope: ['email', 'profile'],
-      prompt: 'none',
     });
   }
 
@@ -20,7 +18,7 @@ export class GoogleOauthStrategy extends PassportStrategy(Strategy, 'google') {
   authorizationParams(): { [key: string]: string } {
     return {
       access_type: 'offline',
-      prompt: 'consent',
+      prompt: 'select_account',
     };
   }
 

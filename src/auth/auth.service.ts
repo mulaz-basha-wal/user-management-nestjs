@@ -1,47 +1,57 @@
 import { Injectable } from '@nestjs/common';
+import { GoogleOauthService } from './google/google-oauth.service';
 
 @Injectable()
 export class AuthService {
-  async getNewAccessToken(refreshToken: string): Promise<string> {
-    try {
-      //Todo: Call respective Oauth provide for new access token using refresh token
-      return 'xyz_token_from_auth_provider' + refreshToken;
-    } catch (error) {
-      throw new Error('Failed to refresh the access token.');
+  constructor(private googleProvider: GoogleOauthService) {}
+
+  async getNewAccessToken(
+    refreshToken: string,
+    provider: string,
+  ): Promise<string> {
+    switch (provider) {
+      case 'google':
+        return await this.googleProvider.getNewAccessToken(refreshToken);
+      default:
+        throw new Error('Invalid Auth provider');
     }
   }
 
-  async getProfile(access_token: string) {
-    try {
-      //Todo: Call respective Oauth provide for profile with access_token
-      return { profile: access_token };
-    } catch (error) {
-      console.error('Failed to revoke the token:', error);
+  async getProfile(accessToken: string, provider: string) {
+    switch (provider) {
+      case 'google':
+        return await this.googleProvider.getProfile(accessToken);
+      default:
+        throw new Error('Invalid Auth provider');
     }
   }
 
-  async isTokenExpired(token: string): Promise<boolean> {
+  async isTokenExpired(
+    accessToken: string,
+    provider: string,
+  ): Promise<boolean> {
     try {
-      // Todo:
-      // const response = await axios.get(
-      //   `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`,
-      // );
-      // const expiresIn = response.data.expires_in;
-      return token === token;
+      switch (provider) {
+        case 'google':
+          return await this.googleProvider.isTokenExpired(accessToken);
+        default:
+          throw new Error('Invalid Auth provider');
+      }
     } catch (error) {
       return true;
     }
   }
 
-  async revokeToken(access_token: string) {
+  async revokeToken(accessToken: string, provider: string) {
     try {
-      // await axios.get(
-      //   `https://accounts.google.com/o/oauth2/revoke?token=${access_token}`,
-      // );
-      // Todo: check revoking options after each provider
-      return access_token;
+      switch (provider) {
+        case 'google':
+          return await this.googleProvider.revokeToken(accessToken);
+        default:
+          throw new Error('Invalid Auth provider');
+      }
     } catch (error) {
-      console.error('Failed to revoke the token:', error);
+      return true;
     }
   }
 }

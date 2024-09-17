@@ -14,7 +14,11 @@ export class IsAuthenticated implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const accessToken = request.cookies['access_token'];
-    const isTokenExpired = await this.authService.isTokenExpired(accessToken);
+    const provider = request.cookies['provider'];
+    const isTokenExpired = await this.authService.isTokenExpired(
+      accessToken,
+      provider,
+    );
 
     if (isTokenExpired) {
       const refreshToken = request.cookies['refresh_token'];
@@ -23,8 +27,10 @@ export class IsAuthenticated implements CanActivate {
       }
 
       try {
-        const newAccessToken =
-          await this.authService.getNewAccessToken(refreshToken);
+        const newAccessToken = await this.authService.getNewAccessToken(
+          refreshToken,
+          provider,
+        );
         request.res.cookie('access_token', newAccessToken, CookieOptions);
         request.cookies['access_token'] = newAccessToken;
       } catch (error) {

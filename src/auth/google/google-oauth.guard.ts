@@ -11,10 +11,7 @@ export class ConsentGuard implements CanActivate {
     const response = context.switchToHttp().getResponse();
     const accessToken = request.cookies['access_token'];
 
-    if (accessToken) {
-      response.redirect(`${process.env.CLIENT_URL}/logged-in`);
-    } else {
-      return true;
-    }
+    if (accessToken) response.redirect(process.env.CLIENT_AFTER_AUTH);
+    return true;
   }
 }
