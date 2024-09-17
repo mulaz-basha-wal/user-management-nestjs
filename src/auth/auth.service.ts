@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GoogleOauthService } from './google/google-oauth.service';
+import { OAUTH_PROVIDERS } from './auth.constants';
 
 @Injectable()
 export class AuthService {
@@ -10,7 +11,7 @@ export class AuthService {
     provider: string,
   ): Promise<string> {
     switch (provider) {
-      case 'google':
+      case OAUTH_PROVIDERS.GOOGLE:
         return await this.googleProvider.getNewAccessToken(refreshToken);
       default:
         throw new Error('Invalid Auth provider');
@@ -19,7 +20,7 @@ export class AuthService {
 
   async getProfile(accessToken: string, provider: string) {
     switch (provider) {
-      case 'google':
+      case OAUTH_PROVIDERS.GOOGLE:
         return await this.googleProvider.getProfile(accessToken);
       default:
         throw new Error('Invalid Auth provider');
@@ -32,7 +33,7 @@ export class AuthService {
   ): Promise<boolean> {
     try {
       switch (provider) {
-        case 'google':
+        case OAUTH_PROVIDERS.GOOGLE:
           return await this.googleProvider.isTokenExpired(accessToken);
         default:
           throw new Error('Invalid Auth provider');
@@ -45,7 +46,7 @@ export class AuthService {
   async revokeToken(accessToken: string, provider: string) {
     try {
       switch (provider) {
-        case 'google':
+        case OAUTH_PROVIDERS.GOOGLE:
           return await this.googleProvider.revokeToken(accessToken);
         default:
           throw new Error('Invalid Auth provider');

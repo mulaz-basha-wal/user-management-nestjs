@@ -1,8 +1,9 @@
 import { Injectable, ExecutionContext, CanActivate } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { OAUTH_PROVIDERS } from '../auth.constants';
 
 @Injectable()
-export class GoogleOauthGuard extends AuthGuard('google') {}
+export class GoogleOauthGuard extends AuthGuard(OAUTH_PROVIDERS.GOOGLE) {}
 
 @Injectable()
 export class ConsentGuard implements CanActivate {
