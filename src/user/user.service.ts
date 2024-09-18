@@ -1,7 +1,11 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
-import { User } from 'src/schemas/user.schema';
+import {
+  User,
+  hashPasswordWithKey,
+  verifyPasswordWithKey,
+} from 'src/schemas/user.schema';
 import {
   CreateUserDTO,
   UpdateUserDTO,
@@ -9,6 +13,7 @@ import {
 } from './dto/userDTOs';
 import { ERROR_MESSAGES } from 'src/common/constants/user.constants';
 import { errorHandler } from 'src/common/utils/apiErrorHandler';
+import { LoginDTO } from 'src/auth/auth.constants';
 
 @Injectable()
 export class UserService {
@@ -21,6 +26,7 @@ export class UserService {
       if (userExist && isExit) {
         throw new ConflictException(ERROR_MESSAGES.USER_EXIST);
       }
+      newUser.password = await hashPasswordWithKey(newUser.password);
       return await this.userModel.create(newUser);
     } catch (error) {
       if (error instanceof ConflictException) throw error;
@@ -80,10 +86,38 @@ export class UserService {
     }
   }
 
+  async findOneByMail(email: string): Promise<User> {
+    try {
+      const user = await this.userModel.findOne({ email });
+      return user;
+    } catch (error) {
+      errorHandler(error, ERROR_MESSAGES.USER_FETCH_FAILED);
+    }
+  }
+
+  async passwordCheck(credentials: LoginDTO): Promise<User | null> {
+    try {
+      const user = await this.userModel
+        .findOne({ email: credentials.email })
+        .select('+password');
+      const validUser = await verifyPasswordWithKey(
+        credentials.password,
+        user.password,
+      );
+      if (validUser) return user;
+      else return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   async update(userId: ObjectId, updatedUser: UpdateUserDTO): Promise<User> {
     try {
       const user = await this.userModel.findOne({ _id: userId });
       if (!user) throw new ConflictException(ERROR_MESSAGES.USER_NOT_EXIST);
+      if (updatedUser.password) {
+        updatedUser.password = await hashPasswordWithKey(updatedUser.password);
+      }
       return await this.userModel.findOneAndUpdate(
         { _id: userId },
         updatedUser,

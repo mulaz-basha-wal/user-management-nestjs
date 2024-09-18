@@ -6,10 +6,15 @@ import {
   Req,
   UnauthorizedException,
   UseGuards,
+  Post,
+  Query,
+  Body,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { IsAuthenticated } from './auth.guard';
+import { CreateUserDTO } from 'src/user/dto/userDTOs';
+import { LoginDTO } from './auth.constants';
 
 @Controller('auth')
 export class AuthController {
@@ -23,6 +28,35 @@ export class AuthController {
 
     if (!accessToken) throw new UnauthorizedException('No access token');
     return await this.authService.getProfile(accessToken, provider);
+  }
+
+  @Post('sign-up')
+  async signUp(
+    @Query() query: { provider: string },
+    @Body() user: CreateUserDTO,
+    @Res() res: Response,
+  ) {
+    return this.authService.signUpHandler(query.provider, user, res);
+  }
+
+  @Post('sign-in')
+  async signIn(
+    @Query() query: { provider: string },
+    @Body() credentials: LoginDTO,
+    @Res() res: Response,
+  ) {
+    return this.authService.signInHandler(query.provider, credentials, res);
+  }
+
+  @Post('password-update')
+  @UseGuards(IsAuthenticated)
+  async updatePassword(
+    @Body() auth: LoginDTO,
+    @Req() req,
+    @Res() res: Response,
+  ) {
+    await this.authService.updatePasswordHandler(auth);
+    await this.logout(req, res);
   }
 
   @Get('logout')

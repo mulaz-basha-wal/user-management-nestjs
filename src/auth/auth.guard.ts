@@ -6,6 +6,9 @@ import {
 } from '@nestjs/common';
 import { CookieOptions } from './auth.constants';
 import { AuthService } from './auth.service';
+import { Reflector } from '@nestjs/core';
+import { ROLE_KEY } from 'src/user/role.decorator';
+import { USER_ROLES } from 'src/common/constants/user.constants';
 
 @Injectable()
 export class IsAuthenticated implements CanActivate {
@@ -14,7 +17,9 @@ export class IsAuthenticated implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const accessToken = request.cookies['access_token'];
+
     const provider = request.cookies['provider'];
+
     const isTokenExpired = await this.authService.isTokenExpired(
       accessToken,
       provider,
@@ -38,5 +43,29 @@ export class IsAuthenticated implements CanActivate {
       }
     }
     return true;
+  }
+}
+
+@Injectable()
+export class RoleGuard implements CanActivate {
+  constructor(
+    private reflector: Reflector,
+    private readonly authService: AuthService,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const requiredRoles = this.reflector.getAllAndOverride<USER_ROLES[]>(
+      ROLE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    const request = context.switchToHttp().getRequest();
+    const profile = await this.authService.getProfile(
+      request.cookies['access_token'],
+      request.cookies['provider'],
+    );
+
+    if (requiredRoles.includes[profile && profile.userRoleId]) return true;
+    return false;
   }
 }

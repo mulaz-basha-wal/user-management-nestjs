@@ -1,9 +1,16 @@
 import axios from 'axios';
 import { Injectable, Request, Res } from '@nestjs/common';
-import { CookieOptions, OAUTH_PROVIDERS } from '../auth.constants';
+import {
+  CookieOptions,
+  epochStandard,
+  OAUTH_PROVIDERS,
+} from '../auth.constants';
 import { UserService } from 'src/user/user.service';
 import { CreateUserDTO } from 'src/user/dto/userDTOs';
-import { USER_ROLES } from 'src/common/constants/user.constants';
+import {
+  USER_ROLES,
+  USER_ROLES_BY_ID,
+} from 'src/common/constants/user.constants';
 import { errorHandler } from 'src/common/utils/apiErrorHandler';
 
 @Injectable()
@@ -43,14 +50,23 @@ export class GoogleOauthService {
       const res = await axios.get(`${this.APIS_URL}/userinfo`, {
         params: { alt: 'json', access_token: accessToken },
       });
-      const userData = res.data;
+      let userData = res.data;
 
       const response = await axios.get(`${this.APIS_URL}/tokeninfo`, {
         params: { alt: 'json', access_token: accessToken },
       });
 
+      const user = await this.userService.findOneByMail(userData.email);
+      userData = {
+        ...userData,
+        ...user.toObject(),
+        isAuthorized: true,
+        userRole: USER_ROLES_BY_ID[user.userRoleId],
+      };
       const currentTime = new Date().getTime();
-      const expires_at = response.data.expires_in * 1000 + (currentTime - 10);
+      const expires_at = epochStandard(
+        response.data.expires_in * 1000 + (currentTime - 10),
+      );
       userData.expires_at = expires_at;
       userData.currentTime = currentTime;
       return userData;
