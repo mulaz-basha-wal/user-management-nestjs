@@ -17,14 +17,12 @@ import {
   UserSearchQueryDTO,
 } from './dto/userDTOs';
 import { USER_ROLES } from 'src/common/constants/user.constants';
-import { MyLogger } from 'src/my-logger/my-logger.service';
 import { IsAuthenticated, RoleGuard } from 'src/auth/auth.guard';
 import { Roles } from './role.decorator';
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
-  private readonly logger = new MyLogger(UserService.name);
 
   @Post()
   create(@Body() user: CreateUserDTO) {
@@ -36,7 +34,6 @@ export class UserController {
   @Roles(USER_ROLES.ADMIN)
   @UseGuards(RoleGuard, IsAuthenticated)
   findAll(@Query() query: UserSearchQueryDTO) {
-    this.logger.log(`Request for All users`, UserController.name);
     return this.userService.findAll(query);
   }
 
