@@ -2,34 +2,35 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './jwt.strategy';
 import { User } from 'src/schemas/user.schema';
-import {
-  CookieOptions,
-  epochStandard,
-  OAUTH_PROVIDERS,
-} from '../auth.constants';
+import { CookieOptions, OAUTH_PROVIDERS } from '../auth.constants';
 import { Response } from 'express';
 import { USER_ROLES_BY_ID } from 'src/common/constants/user.constants';
+import * as moment from 'moment';
 
 @Injectable()
 export class JwtAuthService {
   constructor(private jwtService: JwtService) {}
 
   verifyToken(token: string) {
-    const decoded = this.jwtService.decode(token);
-    if (!decoded || !decoded.exp) {
-      throw new UnauthorizedException('Invalid token');
-    }
-    return epochStandard(decoded.exp) < epochStandard(new Date().getTime());
+    const user = this.jwtService.decode(token);
+    if (!user || !user.exp) throw new UnauthorizedException('Invalid token');
+
+    const tokenExpiry = user.exp;
+    console.log('JwtAuthService ~ verifyToken ~ tokenExpiry:', tokenExpiry);
+    const currentTime = moment().unix();
+    console.log('JwtAuthService ~ verifyToken ~ currentTime:', currentTime);
+    return tokenExpiry < currentTime;
   }
 
   getProfile(token: string) {
-    let decoded = this.jwtService.decode(token);
-    decoded = {
-      ...decoded.user,
+    const { user, exp } = this.jwtService.decode(token);
+    const decoded = {
+      ...user,
+      expires_at: exp,
       isAuthorized: true,
-      expires_at: epochStandard(decoded.exp),
-      expires_data: new Date(decoded.exp).toLocaleString(),
-      userRole: USER_ROLES_BY_ID[decoded.user.userRoleId],
+      userRole: USER_ROLES_BY_ID[user.userRoleId],
+      expiryAt: moment().toLocaleString(),
+      fullName: `${user.firstName} ${user.lastName || ''}`,
     };
     return decoded;
   }

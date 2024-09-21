@@ -6,13 +6,6 @@ export const CookieOptions = {
   sameSite: true,
 };
 
-export const epochStandard = (epochTime: number) => {
-  if (epochTime.toString().length === 13) {
-    return Math.floor(epochTime / 1000);
-  }
-  return epochTime;
-};
-
 export const OAUTH_PROVIDERS = {
   GOOGLE: 'google',
   JWT: 'jwt',

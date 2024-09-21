@@ -104,6 +104,7 @@ export class UserService {
         credentials.password,
         user.password,
       );
+      user.password = null;
       if (validUser) return user;
       else return null;
     } catch (error) {

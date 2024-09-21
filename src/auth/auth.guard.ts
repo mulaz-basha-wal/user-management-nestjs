@@ -65,7 +65,7 @@ export class RoleGuard implements CanActivate {
       request.cookies['provider'],
     );
 
-    if (requiredRoles.includes[profile && profile.userRoleId]) return true;
+    if (requiredRoles.some((role) => role === profile.userRoleId)) return true;
     return false;
   }
 }

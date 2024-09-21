@@ -1,10 +1,6 @@
 import axios from 'axios';
 import { Injectable, Request, Res } from '@nestjs/common';
-import {
-  CookieOptions,
-  epochStandard,
-  OAUTH_PROVIDERS,
-} from '../auth.constants';
+import { CookieOptions, OAUTH_PROVIDERS } from '../auth.constants';
 import { UserService } from 'src/user/user.service';
 import { CreateUserDTO } from 'src/user/dto/userDTOs';
 import {
@@ -12,6 +8,7 @@ import {
   USER_ROLES_BY_ID,
 } from 'src/common/constants/user.constants';
 import { errorHandler } from 'src/common/utils/apiErrorHandler';
+import * as moment from 'moment';
 
 @Injectable()
 export class GoogleOauthService {
@@ -22,7 +19,7 @@ export class GoogleOauthService {
 
   async googleLoginCallback(@Request() req, @Res() res) {
     const { firstName = '', lastName, email, picture } = req.user;
-    const timestamp = new Date().toString();
+    const timestamp = moment().toString();
     const userObj: CreateUserDTO = {
       email,
       lastName,
@@ -63,10 +60,10 @@ export class GoogleOauthService {
         isAuthorized: true,
         userRole: USER_ROLES_BY_ID[user.userRoleId],
       };
-      const currentTime = new Date().getTime();
-      const expires_at = epochStandard(
-        response.data.expires_in * 1000 + (currentTime - 10),
-      );
+      const currentTime = moment().unix();
+      const expires_at = moment()
+        .add(response.data.expires_in - 10, 'seconds')
+        .unix();
       userData.expires_at = expires_at;
       userData.currentTime = currentTime;
       return userData;
