@@ -6,9 +6,10 @@ export const CookieOptions = {
   sameSite: true,
 };
 
-export const OAUTH_PROVIDERS = {
+export const AUTH_PROVIDERS = {
   GOOGLE: 'google',
-  JWT: 'jwt',
+  GITHUB: 'github',
+  CRED: 'credential',
 };
 
 export class LoginDTO {
@@ -18,3 +19,11 @@ export class LoginDTO {
   @IsString({ message: 'Invalid password' })
   password: string;
 }
+
+export const Token = {
+  ACCESS: 'access_token',
+  REFRESH: 'refresh_token',
+  PROVIDER: 'provider',
+};
+
+export const TOKEN_REFRESH_HEADER = 'ums-token-refreshed';
