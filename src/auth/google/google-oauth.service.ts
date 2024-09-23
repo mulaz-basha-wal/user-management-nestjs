@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { Injectable, Request, Res } from '@nestjs/common';
-import { CookieOptions, OAUTH_PROVIDERS } from '../auth.constants';
-import { UserService } from 'src/user/user.service';
-import { CreateUserDTO } from 'src/user/dto/userDTOs';
+import { CookieOptions, AUTH_PROVIDERS, Token } from '../auth.constants';
+import { UserService } from 'src/auth/user/user.service';
+import { CreateUserDTO } from 'src/auth/user/dto/userDTOs';
 import {
   USER_ROLES,
   USER_ROLES_BY_ID,
@@ -34,9 +34,9 @@ export class GoogleOauthService {
       deletedAt: null,
     };
 
-    res.cookie('access_token', req.user._accessToken, CookieOptions);
-    res.cookie('refresh_token', req.user._refreshToken, CookieOptions);
-    res.cookie('provider', OAUTH_PROVIDERS.GOOGLE, CookieOptions);
+    res.cookie(Token.ACCESS, req.user._accessToken, CookieOptions);
+    res.cookie(Token.REFRESH, req.user._refreshToken, CookieOptions);
+    res.cookie(Token.PROVIDER, AUTH_PROVIDERS.GOOGLE, CookieOptions);
 
     await this.userService.create(userObj, false);
     res.redirect(process.env.CLIENT_AFTER_AUTH);
@@ -47,26 +47,37 @@ export class GoogleOauthService {
       const res = await axios.get(`${this.APIS_URL}/userinfo`, {
         params: { alt: 'json', access_token: accessToken },
       });
-      let userData = res.data;
-
       const response = await axios.get(`${this.APIS_URL}/tokeninfo`, {
         params: { alt: 'json', access_token: accessToken },
       });
 
-      const user = await this.userService.findOneByMail(userData.email);
-      userData = {
-        ...userData,
-        ...user.toObject(),
-        isAuthorized: true,
-        userRole: USER_ROLES_BY_ID[user.userRoleId],
-      };
-      const currentTime = moment().unix();
+      const user = await this.userService.findOneByMail(res.data.email);
       const expires_at = moment()
-        .add(response.data.expires_in - 10, 'seconds')
+        .add(response.data.expires_in - 5, 'seconds')
         .unix();
-      userData.expires_at = expires_at;
-      userData.currentTime = currentTime;
-      return userData;
+
+      const profile = {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        userRoleId: user.userRoleId,
+        isActive: user.isActive,
+        roleLastUpdatedAt: user.roleLastUpdatedAt,
+        createdAt: user['createdAt'],
+        updatedAt: user['updatedAt'],
+        deletedAt: user.deletedAt,
+        exp: expires_at,
+        expires_at,
+        revokedAt: null,
+        isRevoked: false,
+        authProvider: AUTH_PROVIDERS.GOOGLE,
+        expiryAt: moment.unix(expires_at).toString(),
+        userRole: USER_ROLES_BY_ID[user.userRoleId],
+        fullName: `${user.firstName} ${user.lastName || ''}`,
+        isAuthorized: response.data.expires_in > 0,
+      };
+      return profile;
     } catch (error) {
       errorHandler(error, 'Failed to load user profile');
     }

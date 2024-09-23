@@ -4,10 +4,10 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
-import { CookieOptions } from './auth.constants';
+import { CookieOptions, Token, TOKEN_REFRESH_HEADER } from './auth.constants';
 import { AuthService } from './auth.service';
 import { Reflector } from '@nestjs/core';
-import { ROLE_KEY } from 'src/user/role.decorator';
+import { ROLE_KEY } from 'src/auth/user/role.decorator';
 import { USER_ROLES } from 'src/common/constants/user.constants';
 
 @Injectable()
@@ -16,33 +16,37 @@ export class IsAuthenticated implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const accessToken = request.cookies['access_token'];
+    const accessToken = request.cookies[Token.ACCESS];
+    const provider = request.cookies[Token.PROVIDER];
 
-    const provider = request.cookies['provider'];
-
-    const isTokenExpired = await this.authService.isTokenExpired(
-      accessToken,
-      provider,
-    );
+    let isTokenExpired = true;
+    if (accessToken) {
+      isTokenExpired = await this.authService.isTokenExpired(
+        accessToken,
+        provider,
+      );
+    }
 
     if (isTokenExpired) {
-      const refreshToken = request.cookies['refresh_token'];
-      if (!refreshToken) {
-        throw new UnauthorizedException('Refresh token not found');
-      }
+      const refreshToken = request.cookies[Token.REFRESH];
+      if (!refreshToken) throw new UnauthorizedException();
 
       try {
         const newAccessToken = await this.authService.getNewAccessToken(
           refreshToken,
           provider,
         );
-        request.res.cookie('access_token', newAccessToken, CookieOptions);
-        request.cookies['access_token'] = newAccessToken;
+        request.cookies[Token.ACCESS] = newAccessToken;
+        request.res.cookie(Token.ACCESS, newAccessToken, CookieOptions);
+        request.res.set(TOKEN_REFRESH_HEADER, true);
+        return true;
       } catch (error) {
-        throw new UnauthorizedException('Failed to refresh token');
+        throw new UnauthorizedException();
       }
+    } else {
+      request.res.set(TOKEN_REFRESH_HEADER, false);
+      return true;
     }
-    return true;
   }
 }
 
@@ -61,8 +65,8 @@ export class RoleGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const profile = await this.authService.getProfile(
-      request.cookies['access_token'],
-      request.cookies['provider'],
+      request.cookies[Token.ACCESS],
+      request.cookies[Token.PROVIDER],
     );
 
     if (requiredRoles.some((role) => role === profile.userRoleId)) return true;

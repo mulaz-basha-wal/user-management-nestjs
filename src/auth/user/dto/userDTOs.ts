@@ -11,7 +11,6 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { Date } from 'mongoose';
 import { USER_ROLES } from 'src/common/constants/user.constants';
 
 export class CreateUserDTO {
@@ -95,3 +94,25 @@ export class UserSearchQueryDTO {
 }
 
 export class UpdateUserDTO extends PartialType(CreateUserDTO) {}
+
+export interface UserAuthData {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  userRoleId: number;
+  deletedAt: string | null;
+  isActive: boolean;
+  roleLastUpdatedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  exp: number;
+  expires_at: number;
+  revokedAt: string | null;
+  isRevoked: boolean;
+  authProvider: string;
+  expiryAt: string;
+  userRole: string;
+  fullName: string;
+  isAuthorized: boolean;
+}

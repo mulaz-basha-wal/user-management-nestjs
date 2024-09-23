@@ -28,7 +28,7 @@ export class User extends Document {
   @Prop({ default: null })
   deletedAt: Date;
 
-  @Prop({ required: true, default: true })
+  @Prop({ required: true, default: false })
   isActive: boolean;
 
   @Prop({ default: () => new Date() })
@@ -38,13 +38,13 @@ export class User extends Document {
 export const UserSchema = SchemaFactory.createForClass(User);
 
 export const hashPasswordWithKey = async (password: string) => {
-  const combinedPassword = password + process.env.JWT_SECRET;
+  const combinedPassword = password + process.env.PASSWORD_HASH_CHUNK;
   const hash = await argon2.hash(combinedPassword);
   return hash;
 };
 
 export const verifyPasswordWithKey = async (password: string, hash: string) => {
-  const combinedPassword = password + process.env.JWT_SECRET;
+  const combinedPassword = password + process.env.PASSWORD_HASH_CHUNK;
   const isSame = await argon2.verify(hash, combinedPassword);
   return isSame;
 };

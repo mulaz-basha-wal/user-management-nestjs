@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
@@ -19,10 +20,16 @@ import {
 import { USER_ROLES } from 'src/common/constants/user.constants';
 import { IsAuthenticated, RoleGuard } from 'src/auth/auth.guard';
 import { Roles } from './role.decorator';
+import { Token } from '../auth.constants';
+import { Request } from 'express';
+import { AuthService } from '../auth.service';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private authService: AuthService,
+  ) {}
 
   @Post()
   create(@Body() user: CreateUserDTO) {
@@ -52,9 +59,18 @@ export class UserController {
   }
 
   @Patch('/:id')
+  @Roles(USER_ROLES.USER, USER_ROLES.ADMIN)
   @UseGuards(IsAuthenticated)
-  update(@Param('id') userId: ObjectId, @Body() updatedUser: UpdateUserDTO) {
-    return this.userService.update(userId, updatedUser);
+  async update(
+    @Param('id') userId: ObjectId,
+    @Body() updatedUser: UpdateUserDTO,
+    @Req() req: Request,
+  ) {
+    await this.userService.update(userId, updatedUser);
+    return await this.authService.getProfile(
+      req.cookies[Token.ACCESS],
+      req.cookies[Token.PROVIDER],
+    );
   }
 
   @Delete('/:id')

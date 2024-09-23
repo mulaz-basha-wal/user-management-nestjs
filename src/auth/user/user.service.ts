@@ -22,7 +22,7 @@ export class UserService {
   async create(newUser: CreateUserDTO, isExit: boolean = true): Promise<User> {
     try {
       const userExist = await this.userModel.findOne({ email: newUser.email });
-      if (userExist && !isExit) return;
+      if (userExist && !isExit) return userExist;
       if (userExist && isExit) {
         throw new ConflictException(ERROR_MESSAGES.USER_EXIST);
       }
@@ -104,7 +104,7 @@ export class UserService {
         credentials.password,
         user.password,
       );
-      user.password = null;
+      user.password = undefined;
       if (validUser) return user;
       else return null;
     } catch (error) {

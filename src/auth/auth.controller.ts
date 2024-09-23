@@ -13,21 +13,41 @@ import {
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { IsAuthenticated } from './auth.guard';
-import { CreateUserDTO } from 'src/user/dto/userDTOs';
-import { LoginDTO } from './auth.constants';
+import { CreateUserDTO } from './user/dto/userDTOs';
+import { LoginDTO, Token } from './auth.constants';
+import { JwtAuthService } from './jwt/jwt.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private jwtAuthService: JwtAuthService,
+  ) {}
 
   @Get('profile')
   @UseGuards(IsAuthenticated)
   async getProfile(@Request() req) {
-    const accessToken = req.cookies['access_token'];
-    const provider = req.cookies['provider'];
-
-    if (!accessToken) throw new UnauthorizedException('No access token');
+    const provider = req.cookies[Token.PROVIDER];
+    const accessToken = req.cookies[Token.ACCESS];
     return await this.authService.getProfile(accessToken, provider);
+  }
+
+  @Get('new_access')
+  @UseGuards(IsAuthenticated)
+  async getNewAccessToken(@Request() req) {
+    const provider = req.cookies[Token.PROVIDER];
+    const accessToken = req.cookies[Token.ACCESS];
+    const refreshToken = req.cookies[Token.REFRESH];
+
+    const profile = await this.authService.getProfile(accessToken, provider);
+    if (profile && profile.isAuthorized) return profile;
+
+    if (!refreshToken) throw new UnauthorizedException('No refresh token');
+    const aToken = await this.authService.getNewAccessToken(
+      refreshToken,
+      provider,
+    );
+    return await this.jwtAuthService.read(aToken, Token.ACCESS);
   }
 
   @Post('sign-up')
@@ -51,9 +71,9 @@ export class AuthController {
   @Post('password-update')
   @UseGuards(IsAuthenticated)
   async updatePassword(
-    @Body() auth: LoginDTO,
     @Req() req,
     @Res() res: Response,
+    @Body() auth: LoginDTO,
   ) {
     await this.authService.updatePasswordHandler(auth);
     await this.logout(req, res);
@@ -62,19 +82,21 @@ export class AuthController {
   @Get('logout')
   @UseGuards(IsAuthenticated)
   async logout(@Req() req, @Res() res: Response) {
-    const refreshToken = req.cookies['refresh_token'];
-    const accessToken = req.cookies['access_token'];
-    const provider = req.cookies['provider'];
+    const refreshToken = req.cookies[Token.REFRESH];
+    const accessToken = req.cookies[Token.ACCESS];
+    const provider = req.cookies[Token.PROVIDER];
+    const user = await this.authService.getProfile(accessToken, provider);
 
-    await this.authService.revokeToken(refreshToken, provider);
-    await this.authService.revokeToken(accessToken, provider);
+    await this.authService.revokeToken(accessToken, Token.ACCESS, provider);
+    await this.authService.revokeToken(refreshToken, Token.REFRESH, provider);
 
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
-    res.clearCookie('provider');
+    res.clearCookie(Token.ACCESS);
+    res.clearCookie(Token.REFRESH);
+    res.clearCookie(Token.PROVIDER);
     res.json({
       message: 'logout successful',
       code: 'LOGIN_AGAIN',
+      user,
     });
   }
 }

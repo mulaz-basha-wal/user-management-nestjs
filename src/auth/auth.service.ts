@@ -1,10 +1,16 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { GoogleOauthService } from './google/google-oauth.service';
-import { LoginDTO, OAUTH_PROVIDERS } from './auth.constants';
+import { LoginDTO, AUTH_PROVIDERS, Token } from './auth.constants';
 import { JwtAuthService } from './jwt/jwt.service';
-import { CreateUserDTO } from 'src/user/dto/userDTOs';
-import { UserService } from 'src/user/user.service';
+import { CreateUserDTO } from 'src/auth/user/dto/userDTOs';
+import { UserService } from 'src/auth/user/user.service';
 import { Response } from 'express';
+import { CredentialsService } from './credentials/credentials.service';
+import { ERROR_MESSAGES } from 'src/common/constants/user.constants';
 
 @Injectable()
 export class AuthService {
@@ -12,13 +18,15 @@ export class AuthService {
     private googleProvider: GoogleOauthService,
     private jwtAuthService: JwtAuthService,
     private userService: UserService,
+    private credService: CredentialsService,
   ) {}
 
   async signUpHandler(provider: string, data: CreateUserDTO, res: Response) {
     switch (provider) {
-      case OAUTH_PROVIDERS.JWT:
+      case AUTH_PROVIDERS.CRED:
         const user = await this.userService.create(data);
-        return this.jwtAuthService.signUpHandler(user, res);
+        if (user) return this.credService.signInHandler(user, res);
+        else throw new ConflictException(ERROR_MESSAGES.USER_CREATION_FAILED);
       default:
         throw new Error('Invalid Auth provider');
     }
@@ -26,11 +34,10 @@ export class AuthService {
 
   async signInHandler(provider: string, data: LoginDTO, res: Response) {
     switch (provider) {
-      case OAUTH_PROVIDERS.JWT:
+      case AUTH_PROVIDERS.CRED:
         const user = await this.userService.passwordCheck(data);
-        if (user) {
-          return this.jwtAuthService.signInHandler(user, res);
-        } else throw new UnauthorizedException('Invalid credentials');
+        if (user) return this.credService.signInHandler(user, res);
+        else throw new UnauthorizedException('Invalid credentials');
       default:
         throw new Error('Invalid Auth provider');
     }
@@ -41,8 +48,11 @@ export class AuthService {
     provider: string,
   ): Promise<string> {
     switch (provider) {
-      case OAUTH_PROVIDERS.GOOGLE:
+      case AUTH_PROVIDERS.GOOGLE:
         return await this.googleProvider.getNewAccessToken(refreshToken);
+      case AUTH_PROVIDERS.CRED:
+      case AUTH_PROVIDERS.GITHUB:
+        return await this.credService.getNewAccessToken(refreshToken);
       default:
         throw new Error('Invalid Auth provider');
     }
@@ -50,10 +60,13 @@ export class AuthService {
 
   async getProfile(accessToken: string, provider: string) {
     switch (provider) {
-      case OAUTH_PROVIDERS.GOOGLE:
+      case AUTH_PROVIDERS.GOOGLE:
         return await this.googleProvider.getProfile(accessToken);
-      case OAUTH_PROVIDERS.JWT:
-        return await this.jwtAuthService.getProfile(accessToken);
+      case AUTH_PROVIDERS.CRED:
+      case AUTH_PROVIDERS.GITHUB:
+        const auth = await this.jwtAuthService.read(accessToken, Token.ACCESS);
+        auth.provider = provider;
+        return auth;
       default:
         throw new Error('Invalid Auth provider');
     }
@@ -65,10 +78,11 @@ export class AuthService {
   ): Promise<boolean> {
     try {
       switch (provider) {
-        case OAUTH_PROVIDERS.GOOGLE:
+        case AUTH_PROVIDERS.GOOGLE:
           return await this.googleProvider.isTokenExpired(accessToken);
-        case OAUTH_PROVIDERS.JWT:
-          return this.jwtAuthService.verifyToken(accessToken);
+        case AUTH_PROVIDERS.CRED:
+        case AUTH_PROVIDERS.GITHUB:
+          return await this.jwtAuthService.verify(accessToken, Token.ACCESS);
         default:
           throw new Error('Invalid Auth provider');
       }
@@ -77,13 +91,14 @@ export class AuthService {
     }
   }
 
-  async revokeToken(accessToken: string, provider: string) {
+  async revokeToken(token: string, type: string, provider: string) {
     try {
       switch (provider) {
-        case OAUTH_PROVIDERS.GOOGLE:
-          return await this.googleProvider.revokeToken(accessToken);
-        case OAUTH_PROVIDERS.JWT:
-          return null;
+        case AUTH_PROVIDERS.GOOGLE:
+          return await this.googleProvider.revokeToken(token);
+        case AUTH_PROVIDERS.CRED:
+        case AUTH_PROVIDERS.GITHUB:
+          return this.credService.revokeToken(token, type);
         default:
           throw new Error('Invalid Auth provider');
       }
