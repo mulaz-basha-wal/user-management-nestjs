@@ -23,6 +23,7 @@ import { Roles } from './role.decorator';
 import { Token } from '../auth.constants';
 import { Request } from 'express';
 import { AuthService } from '../auth.service';
+import * as moment from 'moment';
 
 @Controller('user')
 export class UserController {
@@ -77,6 +78,18 @@ export class UserController {
   @Roles(USER_ROLES.ADMIN)
   @UseGuards(RoleGuard, IsAuthenticated)
   delete(@Param('id') userId: ObjectId) {
-    return this.userService.delete(userId);
+    const updatedData = {
+      isActive: false,
+      deletedAt: moment().toISOString(),
+    };
+    return this.userService.update(userId, updatedData);
+  }
+
+  @Patch('/block/:id')
+  @Roles(USER_ROLES.ADMIN)
+  @UseGuards(RoleGuard, IsAuthenticated)
+  block(@Param('id') userId: ObjectId, @Query() query: { status: string }) {
+    const updatedData = { isActive: !(query.status === 'true') };
+    return this.userService.update(userId, updatedData);
   }
 }

@@ -11,7 +11,10 @@ import {
   UpdateUserDTO,
   UserSearchQueryDTO,
 } from './dto/userDTOs';
-import { ERROR_MESSAGES } from 'src/common/constants/user.constants';
+import {
+  ERROR_MESSAGES,
+  USER_ROLES_BY_ID,
+} from 'src/common/constants/user.constants';
 import { errorHandler } from 'src/common/utils/apiErrorHandler';
 import { LoginDTO } from 'src/auth/auth.constants';
 
@@ -50,10 +53,18 @@ export class UserService {
         };
       }
 
-      return await this.userModel
+      const list = await this.userModel
         .find(queryOptions ?? {})
         .limit(query.limit)
-        .skip((query.page - 1) * query.limit);
+        .skip((query.page - 1) * query.limit)
+        .sort({ createdAt: -1 });
+      return list.map((user: User) => {
+        return {
+          ...user.toObject(),
+          userRole: USER_ROLES_BY_ID[user.userRoleId],
+          fullName: `${user.firstName} ${user.lastName || ''}`,
+        };
+      });
     } catch (error) {
       errorHandler(error, ERROR_MESSAGES.USER_FETCH_FAILED);
     }

@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Token } from '../auth.constants';
 import { Model } from 'mongoose';
@@ -84,7 +80,7 @@ export class JwtAuthService {
 
   async revoke(token: string, type: string) {
     const _token = await this.read(token, type);
-    if (!_token) throw new ForbiddenException('Invalid Token');
+    if (!_token) throw new UnauthorizedException('Invalid Token');
 
     const _c = { token, isRevoked: false };
     const _n = { isRevoked: true, revokedAt: moment().toISOString() };

@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { GoogleOauthService } from './google/google-oauth.service';
 import { LoginDTO, AUTH_PROVIDERS, Token } from './auth.constants';
@@ -36,6 +37,9 @@ export class AuthService {
     switch (provider) {
       case AUTH_PROVIDERS.CRED:
         const user = await this.userService.passwordCheck(data);
+        if (user.isActive === false || user.deletedAt !== null) {
+          throw new ForbiddenException();
+        }
         if (user) return this.credService.signInHandler(user, res);
         else throw new UnauthorizedException('Invalid credentials');
       default:
