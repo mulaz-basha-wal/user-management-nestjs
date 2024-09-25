@@ -69,6 +69,10 @@ export class CreateUserDTO {
   @IsOptional()
   isActive: boolean;
 
+  @IsBoolean()
+  @IsOptional()
+  isPasswordSet: boolean;
+
   @IsDate()
   @Type(() => Date)
   @IsOptional()

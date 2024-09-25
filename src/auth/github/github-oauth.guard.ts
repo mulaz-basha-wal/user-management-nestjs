@@ -26,42 +26,46 @@ export class GithubConsentGuard implements CanActivate {
     let status = false;
     let userId = null;
 
-    if (accessToken) {
-      const data = await this.jwtAuthService.read(accessToken, Token.ACCESS);
-      if (!data) return true;
+    try {
+      if (accessToken) {
+        const data = await this.jwtAuthService.read(accessToken, Token.ACCESS);
+        if (!data) return true;
 
-      userId = new Types.ObjectId(data._id);
-      status = await this.isTokenRevoked(userId);
-    } else {
-      const query = request.query;
-      if (!query.email) return true;
-      const user = await this.userModel.findOne({ email: query.email });
+        userId = new Types.ObjectId(data._id);
+        status = await this.isTokenRevoked(userId);
+      } else {
+        const query = request.query;
+        if (!query.email) return true;
+        const user = await this.userModel.findOne({ email: query.email });
 
-      userId = user._id as Types.ObjectId;
-      userId = new Types.ObjectId(userId);
-      status = await this.isTokenRevoked(userId);
+        userId = user._id as Types.ObjectId;
+        userId = new Types.ObjectId(userId);
+        status = await this.isTokenRevoked(userId);
+      }
+
+      if (!status) {
+        const user = await this.userModel.findOne({ _id: userId });
+        const aToken = await this.jwtAuthService.create(
+          user.toObject(),
+          Token.ACCESS,
+          AUTH_PROVIDERS.GITHUB,
+        );
+        const rToken = await this.jwtAuthService.create(
+          user.toObject(),
+          Token.REFRESH,
+          AUTH_PROVIDERS.GITHUB,
+        );
+
+        response.cookie(Token.ACCESS, aToken, CookieOptions);
+        response.cookie(Token.REFRESH, rToken, CookieOptions);
+        response.cookie(Token.PROVIDER, AUTH_PROVIDERS.GITHUB, CookieOptions);
+
+        response.redirect(process.env.CLIENT_AFTER_AUTH);
+      }
+      return status;
+    } catch (error) {
+      return true;
     }
-
-    if (!status) {
-      const user = await this.userModel.findOne({ _id: userId });
-      const aToken = await this.jwtAuthService.create(
-        user.toObject(),
-        Token.ACCESS,
-        AUTH_PROVIDERS.GITHUB,
-      );
-      const rToken = await this.jwtAuthService.create(
-        user.toObject(),
-        Token.REFRESH,
-        AUTH_PROVIDERS.GITHUB,
-      );
-
-      response.cookie(Token.ACCESS, aToken, CookieOptions);
-      response.cookie(Token.REFRESH, rToken, CookieOptions);
-      response.cookie(Token.PROVIDER, AUTH_PROVIDERS.GITHUB, CookieOptions);
-
-      response.redirect(process.env.CLIENT_AFTER_AUTH);
-    }
-    return status;
   }
 
   async isTokenRevoked(userId: Types.ObjectId): Promise<boolean> {

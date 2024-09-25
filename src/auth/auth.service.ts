@@ -3,6 +3,8 @@ import {
   ConflictException,
   UnauthorizedException,
   ForbiddenException,
+  NotFoundException,
+  RequestTimeoutException,
 } from '@nestjs/common';
 import { GoogleOauthService } from './google/google-oauth.service';
 import { LoginDTO, AUTH_PROVIDERS, Token } from './auth.constants';
@@ -12,6 +14,10 @@ import { UserService } from 'src/auth/user/user.service';
 import { Response } from 'express';
 import { CredentialsService } from './credentials/credentials.service';
 import { ERROR_MESSAGES } from 'src/common/constants/user.constants';
+import { maskEmail } from 'src/common/utils';
+import { MailService } from 'src/mail/mail.service';
+import * as jwt from 'jsonwebtoken';
+import * as moment from 'moment';
 
 @Injectable()
 export class AuthService {
@@ -20,11 +26,13 @@ export class AuthService {
     private jwtAuthService: JwtAuthService,
     private userService: UserService,
     private credService: CredentialsService,
+    private mailService: MailService,
   ) {}
 
   async signUpHandler(provider: string, data: CreateUserDTO, res: Response) {
     switch (provider) {
       case AUTH_PROVIDERS.CRED:
+        data.isPasswordSet = true;
         const user = await this.userService.create(data);
         if (user) return this.credService.signInHandler(user, res);
         else throw new ConflictException(ERROR_MESSAGES.USER_CREATION_FAILED);
@@ -37,11 +45,11 @@ export class AuthService {
     switch (provider) {
       case AUTH_PROVIDERS.CRED:
         const user = await this.userService.passwordCheck(data);
+        if (!user) throw new UnauthorizedException('Invalid credentials');
         if (user.isActive === false || user.deletedAt !== null) {
-          throw new ForbiddenException();
+          throw new ForbiddenException('User blocked/deleted');
         }
-        if (user) return this.credService.signInHandler(user, res);
-        else throw new UnauthorizedException('Invalid credentials');
+        return this.credService.signInHandler(user, res);
       default:
         throw new Error('Invalid Auth provider');
     }
@@ -120,5 +128,54 @@ export class AuthService {
     } catch (error) {
       throw new Error('Failed to update the password');
     }
+  }
+
+  async forgotPasswordHandler(email: string) {
+    if (!email) throw new ForbiddenException('Invalid User');
+    const user = await this.userService.findOneByMail(email);
+    if (user) {
+      const token = jwt.sign(
+        { id: user._id },
+        process.env.JWT_ACCESS_TOKEN_SECRET,
+        { expiresIn: '30m' },
+      );
+      const resetLink = `${process.env.CLIENT_URL}/reset_password?token=${token}`;
+
+      await this.mailService.sendMail(
+        email,
+        `[IMP] Reset password - ${process.env.APP_NAME}`,
+        'forgot-password',
+        {
+          resetLink,
+          userName: user.firstName,
+          appName: process.env.APP_NAME,
+        },
+      );
+      return {
+        message: `We have e-mailed your password reset link at ${maskEmail(email)}`,
+      };
+    } else {
+      throw new NotFoundException('Invalid User');
+    }
+  }
+
+  async resetPasswordHandler(password: string, token: string) {
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET);
+    if (!decoded || moment().unix() >= decoded.exp) {
+      throw new RequestTimeoutException(
+        'Invalid/Expired link, please re-try changing password',
+      );
+    }
+
+    const user = await this.userService.findOne(decoded.id);
+    if (!user) throw new NotFoundException('Invalid User');
+
+    await this.userService.update(decoded.id, {
+      password,
+      isPasswordSet: true,
+    });
+    return {
+      message: 'Password reset successfully, please try sign-in.',
+    };
   }
 }

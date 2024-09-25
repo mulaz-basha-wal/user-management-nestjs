@@ -6,6 +6,7 @@ import { JwtAuthModule } from './jwt/jwt.module';
 import { UserModule } from 'src/auth/user/user.module';
 import { CredentialsAuthModule } from './credentials/credentials.module';
 import { GithubOAuthModule } from './github/github-oauth.module';
+import { MailService } from 'src/mail/mail.service';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { GithubOAuthModule } from './github/github-oauth.module';
     CredentialsAuthModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, MailService],
   exports: [AuthService],
 })
 export class AuthModule {}

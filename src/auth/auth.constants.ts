@@ -27,3 +27,7 @@ export const Token = {
 };
 
 export const TOKEN_REFRESH_HEADER = 'ums-token-refreshed';
+
+export interface ResetPassword {
+  token: string;
+}

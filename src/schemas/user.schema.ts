@@ -31,6 +31,9 @@ export class User extends Document {
   @Prop({ required: true, default: false })
   isActive: boolean;
 
+  @Prop({ required: true, default: false })
+  isPasswordSet: boolean;
+
   @Prop({ default: () => new Date() })
   roleLastUpdatedAt: Date;
 }
