@@ -10,4 +10,7 @@ export const ERROR_MESSAGES = {
   USER_UPDATE_FAILED: 'Unable to update user.',
   USER_DELETE_FAILED: 'Unable to delete user.',
   USER_CREATION_FAILED: 'Unable to register, please try again after sometime.',
+  PASSWORDS_DO_NOT_MATCH: 'Password and Confirm password did not match',
+  INVALID_CREDENTIALS: 'Invalid email/password',
+  LOGIN_FAILED: 'Login failed. Please try again',
 };

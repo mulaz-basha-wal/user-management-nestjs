@@ -43,6 +43,8 @@ export class CreateUserDTO {
   })
   password: string;
 
+  confirmPassword: string;
+
   @IsOptional()
   @IsEnum(USER_ROLES, { message: 'Invalid user role' })
   userRoleId: USER_ROLES;
@@ -68,7 +70,7 @@ export class CreateUserDTO {
 
   @IsBoolean()
   @IsOptional()
-  isActive: boolean;
+  isVerified: boolean;
 
   @IsDate()
   @Type(() => Date)
@@ -94,4 +96,7 @@ export class UserSearchQueryDTO {
   email: string;
 }
 
-export class UpdateUserDTO extends PartialType(CreateUserDTO) {}
+export class UpdateUserDTO extends PartialType(CreateUserDTO) {
+  @IsOptional()
+  userRoleId: number;
+}
