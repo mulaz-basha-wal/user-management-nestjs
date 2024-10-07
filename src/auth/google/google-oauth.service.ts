@@ -9,6 +9,7 @@ import {
 } from 'src/common/constants/user.constants';
 import { errorHandler } from 'src/common/utils/apiErrorHandler';
 import * as moment from 'moment';
+import { authorizationErrorLink } from 'src/common/utils';
 
 @Injectable()
 export class GoogleOauthService {
@@ -18,6 +19,9 @@ export class GoogleOauthService {
   constructor(private userService: UserService) {}
 
   async googleLoginCallback(@Request() req, @Res() res) {
+    if (!req.user || req.query.error) {
+      return res.redirect(authorizationErrorLink(req, AUTH_PROVIDERS.GOOGLE));
+    }
     const { firstName = '', lastName, email, picture } = req.user;
     const timestamp = moment().toString();
     const userObj: CreateUserDTO = {

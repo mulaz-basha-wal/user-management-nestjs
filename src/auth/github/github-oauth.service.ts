@@ -8,6 +8,7 @@ import { USER_ROLES } from 'src/common/constants/user.constants';
 import { AUTH_PROVIDERS, CookieOptions, Token } from '../auth.constants';
 import { JwtAuthService } from '../jwt/jwt.service';
 import { GithubToken } from 'src/schemas/githubToken.schema';
+import { authorizationErrorLink } from 'src/common/utils';
 
 @Injectable()
 export class GithubOAuthService {
@@ -18,6 +19,9 @@ export class GithubOAuthService {
   ) {}
 
   async loginCallback(@Request() req, @Res() res) {
+    if (!req.user || req.query.error) {
+      return res.redirect(authorizationErrorLink(req, AUTH_PROVIDERS.GITHUB));
+    }
     const { firstName, lastName, email, picture } = req.user;
     const timestamp = moment().toString();
 

@@ -1,6 +1,11 @@
 import axios from 'axios';
 import { AuthGuard } from '@nestjs/passport';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AUTH_PROVIDERS, CookieOptions, Token } from '../auth.constants';
 import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
@@ -9,7 +14,16 @@ import { User } from 'src/schemas/user.schema';
 import { GithubToken } from 'src/schemas/githubToken.schema';
 
 @Injectable()
-export class GithubOAuthGuard extends AuthGuard(AUTH_PROVIDERS.GITHUB) {}
+export class GithubOAuthGuard extends AuthGuard(AUTH_PROVIDERS.GITHUB) {
+  handleRequest(err, user, info, context: ExecutionContext) {
+    const req = context.switchToHttp().getRequest();
+
+    if (req.query.error === 'access_denied') return null;
+
+    if (err || !user) throw err || new UnauthorizedException();
+    return user;
+  }
+}
 
 @Injectable()
 export class GithubConsentGuard implements CanActivate {
