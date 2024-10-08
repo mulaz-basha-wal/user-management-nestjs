@@ -10,7 +10,7 @@ export class Token extends Document {
   @Prop({ required: true, enum: AUTH_PROVIDERS })
   authProvider: string;
 
-  @Prop({ required: true })
+  @Prop({ required: false })
   accessToken: string;
 
   @Prop({ required: false })

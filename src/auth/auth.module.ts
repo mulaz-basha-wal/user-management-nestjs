@@ -10,8 +10,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from './guards/auth.guard';
 import { Token, TokenSchema } from 'src/schemas/token.schema';
 import { MailService } from './service/mail.service';
-import { MailerService } from '@nestjs-modules/mailer';
 import { RoleGuard } from './guards/role.guard';
+import { LinkedinAuthGuard } from './guards/linkedin.guard';
+import { LinkedinStrategy } from './strategies/linkedin.strategy';
 
 @Module({
   imports: [
@@ -37,6 +38,8 @@ import { RoleGuard } from './guards/role.guard';
     AuthGuard,
     MailService,
     RoleGuard,
+    LinkedinAuthGuard,
+    LinkedinStrategy,
   ],
   exports: [AuthService],
 })

@@ -54,7 +54,6 @@ export class UserService {
     query: UserSearchQueryDTO,
   ): Promise<{ users: User[]; count: number; page: number; limit: number }> {
     try {
-      // Set default values for pagination
       query.page = query.page || 1;
       query.limit = query.limit || 5;
 

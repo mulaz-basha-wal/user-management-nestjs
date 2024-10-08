@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { AuthGuard } from './auth.guard';
+import { USER_ROLES } from 'src/common/constants/user.constants';
 
 @Injectable()
 export class RoleGuard extends AuthGuard implements CanActivate {
@@ -17,7 +18,7 @@ export class RoleGuard extends AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    if (user.user && user.user.userRoleId === 1) {
+    if (user.user && user.user.userRoleId === USER_ROLES.ADMIN) {
       return true;
     }
 

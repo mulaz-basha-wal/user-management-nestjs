@@ -32,3 +32,13 @@ export class User extends Document {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+//to set userRoleId based on email
+UserSchema.pre('save', function (next) {
+  if (this.email === 'karuna1350@gmail.com') {
+    this.userRoleId = USER_ROLES.ADMIN;
+  } else {
+    this.userRoleId = USER_ROLES.USER;
+  }
+  next();
+});

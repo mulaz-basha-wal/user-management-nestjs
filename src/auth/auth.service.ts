@@ -74,6 +74,7 @@ export class AuthService {
     }
   }
 
+  //Goggle services
   async signInWithGoogle(user: GoogleUser, res: Response) {
     if (!user) throw new BadRequestException('Unauthenticated');
     let existingUser = await this.findUserByEmail(user.email);
@@ -102,12 +103,6 @@ export class AuthService {
     return user;
   }
 
-  private async findUserByEmail(email: string) {
-    const user = await this.userModel.findOne({ email });
-    if (!user) return null;
-    return user;
-  }
-
   private async registerGoogleUser(res: Response, user: GoogleUser) {
     try {
       const newUser = await this.userModel.create({
@@ -123,22 +118,48 @@ export class AuthService {
     }
   }
 
-  setTokenToCookies(
-    res: Response,
-    token: string,
-    provider: string,
-    userId: string,
-  ) {
-    const expirationDateInMilliseconds =
-      new Date().getTime() + expiresTimeTokenMilliseconds;
-    const cookieOptions: CookieOptions = {
-      httpOnly: true,
-      expires: new Date(expirationDateInMilliseconds),
-    };
+  async getGoogleTokenInfo(accessToken: string) {
+    try {
+      const response = await axios.get(
+        `https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        'Error fetching token info:',
+        error.response?.data || error.message,
+      );
+      return error.response?.data || error.message;
+    }
+  }
 
-    res.cookie('token', token, cookieOptions);
-    res.cookie('provider', provider, cookieOptions);
-    res.cookie('userId', userId, cookieOptions);
+  async getGoogleRefreshAccessToken(refreshToken: string): Promise<string> {
+    const params = new URLSearchParams();
+    params.append('client_id', process.env.GOOGLE_CLIENT_ID);
+    params.append('client_secret', process.env.GOOGLE_CLIENT_SECRET);
+    params.append('refresh_token', refreshToken);
+    params.append('grant_type', 'refresh_token');
+
+    try {
+      const response = await axios.post(
+        'https://oauth2.googleapis.com/token',
+        params.toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+      );
+
+      const { access_token } = response.data;
+      return access_token;
+    } catch (error) {
+      console.error(
+        'Error getting access token:',
+        error.response?.data || error.message,
+      );
+      throw new Error('Unable to get access token');
+    }
   }
 
   async revokeGoogleToken(token: string) {
@@ -187,6 +208,207 @@ export class AuthService {
       throw new InternalServerErrorException('Could not validate Google user');
     }
   }
+
+  //Linkedin services
+  async signInWithLinkedin(user: any, res: Response) {
+    if (!user) throw new BadRequestException('Unauthenticated');
+    let existingUser = await this.findUserByEmail(user.email);
+    if (!existingUser) {
+      existingUser = await this.registerLinkedinUser(res, user);
+      await this.updateUserToken(
+        existingUser._id.toString(),
+        AUTH_PROVIDERS.LINKEDIN,
+        user.accessToken,
+        user.refreshToken || null,
+      );
+    } else {
+      await this.updateUserToken(
+        existingUser._id.toString(),
+        AUTH_PROVIDERS.LINKEDIN,
+        user.accessToken,
+      );
+    }
+
+    this.setTokenToCookies(
+      res,
+      user.accessToken,
+      AUTH_PROVIDERS.LINKEDIN,
+      existingUser._id.toString(),
+    );
+    return user;
+  }
+
+  private async registerLinkedinUser(res: Response, user: any) {
+    try {
+      const newUser = await this.userModel.create({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        accessToken: user.accessToken,
+      });
+      return newUser;
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException();
+    }
+  }
+
+  async getLinkedinTokenInfo(accessToken: string) {
+    try {
+      const response = await axios.post(
+        'https://www.linkedin.com/oauth/v2/introspectToken',
+        new URLSearchParams({
+          client_id: process.env.LINKEDIN_CLIENT_ID,
+          client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+          token: accessToken,
+        }).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        'Error fetching token info:',
+        error.response?.data || error.message,
+      );
+      return error.response?.data || error.message;
+    }
+  }
+
+  async revokeLinkedinToken(token: string) {
+    try {
+      await axios.post(
+        'https://www.linkedin.com/oauth/v2/revoke',
+        new URLSearchParams({
+          client_id: process.env.LINKEDIN_CLIENT_ID,
+          client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+          token: token,
+        }).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+      );
+    } catch (error) {
+      this.logger.error('Failed to revoke the token.');
+    }
+  }
+
+  async validateUserWithLinkedin(
+    token: string,
+    userId: string,
+    res: Response,
+  ): Promise<any> {
+    try {
+      const accessToken = token;
+      const tokenInfo = await this.getLinkedinTokenInfo(accessToken);
+      // const userToken = await this.findUserTokenByProvider(userId, 'linkedin');
+      if (!tokenInfo.active) {
+        // TODO:Get new accesstoken-refreshtoken not provided so not handled for now
+        // );
+        // await this.updateUserToken(userDetails.id, 'linkedin', accessToken);
+        // this.setTokenToCookies(res, accessToken, 'linkedin', userId);
+        throw new UnauthorizedException('Revoked access/session expired');
+      }
+      const response = await axios.get(`https://api.linkedin.com/v2/userinfo`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      let user = response.data;
+      user = await this.userModel.findOne({ email: user.email });
+      return { user };
+    } catch (error) {
+      this.logger.error('Error validating Linkedin user:', error);
+      throw new InternalServerErrorException(
+        'Could not validate Linkedin user',
+      );
+    }
+  }
+
+  // common services
+  private async findUserByEmail(email: string) {
+    const user = await this.userModel.findOne({ email });
+    if (!user) return null;
+    return user;
+  }
+
+  setTokenToCookies(
+    res: Response,
+    token: string,
+    provider: string,
+    userId: string,
+  ) {
+    const expirationDateInMilliseconds =
+      new Date().getTime() + expiresTimeTokenMilliseconds;
+    const cookieOptions: CookieOptions = {
+      httpOnly: true,
+      expires: new Date(expirationDateInMilliseconds),
+    };
+
+    res.cookie('token', token, cookieOptions);
+    res.cookie('provider', provider, cookieOptions);
+    res.cookie('userId', userId, cookieOptions);
+  }
+
+  async updateUserToken(
+    userId: string,
+    authProvider: string,
+    accessToken: string = null,
+    refreshToken: string = null,
+    resetPasswordToken: string = null,
+    resetPasswordExpiryDate: Date = null,
+  ) {
+    const data = {
+      userId,
+      authProvider,
+      accessToken,
+      refreshToken,
+      resetPasswordToken,
+      resetPasswordExpiryDate,
+    };
+    const userToken = await this.tokenModel.findOne({
+      userId,
+      authProvider,
+    });
+    if (!userToken) {
+      await this.tokenModel.create(data);
+    } else {
+      userToken.accessToken = accessToken || userToken.accessToken;
+      userToken.refreshToken = refreshToken || userToken.refreshToken;
+      userToken.resetPasswordToken =
+        resetPasswordToken || userToken.resetPasswordToken;
+      userToken.resetPasswordExpiryDate =
+        resetPasswordExpiryDate || userToken.resetPasswordExpiryDate;
+      await userToken.save();
+    }
+  }
+
+  async getUserProvidersList(userId: string) {
+    let providers = [];
+    const tokens = await this.tokenModel.find({ userId });
+    providers = tokens
+      .map((token) => token.authProvider)
+      .filter((provider, index, self) => self.indexOf(provider) === index);
+    return providers;
+  }
+
+  async findUserTokenByProvider(userId: string, provider: string) {
+    try {
+      const userToken = await this.tokenModel.findOne({
+        userId,
+        authProvider: provider,
+      });
+      return userToken;
+    } catch (e) {
+      throw e;
+    }
+  }
+
   async validateUserWithJWT(token: string, userId: string): Promise<any> {
     try {
       const decodedToken = await this.jwtService.verifyAsync(token);
@@ -202,6 +424,8 @@ export class AuthService {
       );
     }
   }
+
+  //Profile Management services
   async updatePassword(
     req: Request,
     body: {
@@ -211,19 +435,27 @@ export class AuthService {
     },
   ) {
     const { oldPassword, newPassword, confirmNewPassword } = body;
-
-    if (!oldPassword || !newPassword || !confirmNewPassword) {
+    const user = req.user as any;
+    if (!newPassword || !confirmNewPassword) {
       throw new BadRequestException('Please provide all required fields');
     }
-
-    const user = req.user as any;
-
-    const isOldPasswordValid = await bcrypt.compare(
-      oldPassword,
-      user.user.password,
-    );
-    if (!isOldPasswordValid) {
-      throw new UnauthorizedException('Old password is incorrect');
+    if (user.user.password) {
+      if (oldPassword) {
+        const isOldPasswordValid = await bcrypt.compare(
+          oldPassword,
+          user.user.password,
+        );
+        if (!isOldPasswordValid) {
+          throw new UnauthorizedException('Old password is incorrect');
+        }
+        if (newPassword === oldPassword) {
+          throw new BadRequestException(
+            'New password and and Old password Cannot be same',
+          );
+        }
+      } else {
+        throw new BadRequestException('Old password required');
+      }
     }
 
     if (newPassword !== confirmNewPassword) {
@@ -232,13 +464,9 @@ export class AuthService {
       );
     }
 
-    if (newPassword === oldPassword) {
-      throw new BadRequestException(
-        'New password and and Old password Cannot be same',
-      );
-    }
-
     const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.updateUserToken(user.user.id, AUTH_PROVIDERS.JWT);
 
     return await this.userModel.updateOne(
       { email: user.user.email },
@@ -260,8 +488,8 @@ export class AuthService {
     await this.updateUserToken(
       user.id,
       AUTH_PROVIDERS.JWT,
-      userToken.accessToken,
-      userToken.refreshToken,
+      userToken?.accessToken || null,
+      userToken?.refreshToken || null,
       resetToken,
       resetTokenExpiration,
     );
@@ -270,42 +498,12 @@ export class AuthService {
     await this.mailService.sendMail({
       to: email,
       subject: 'Reset Password',
-      text: `You requested a password reset. Click the link to reset your password: ${resetLink}`,
+      text: `You requested a password reset.It Will expire in an Hour. Click the link to reset your password: ${resetLink}`,
     });
 
     return true;
   }
 
-  async updateUserToken(
-    userId: string,
-    authProvider: string,
-    accessToken: string,
-    refreshToken: string = null,
-    resetPasswordToken: string = null,
-    resetPasswordExpiryDate: Date = null,
-  ) {
-    const data = {
-      userId,
-      authProvider,
-      accessToken,
-      refreshToken,
-      resetPasswordToken,
-      resetPasswordExpiryDate,
-    };
-    const userToken = await this.tokenModel.findOne({
-      userId,
-      authProvider,
-    });
-    if (!userToken) {
-      await this.tokenModel.create(data);
-    } else {
-      userToken.accessToken = accessToken;
-      userToken.refreshToken = refreshToken;
-      userToken.resetPasswordToken = resetPasswordToken;
-      userToken.resetPasswordExpiryDate = resetPasswordExpiryDate;
-      await userToken.save();
-    }
-  }
   async updateProfile(email: string, updatedUser: UpdateUserDTO) {
     try {
       const user = await this.userModel.findOne({ email });
@@ -317,69 +515,20 @@ export class AuthService {
       errorHandler(error, ERROR_MESSAGES.USER_UPDATE_FAILED);
     }
   }
-  async getUserProvidersList(userId: string) {
-    let providers = [];
-    const tokens = await this.tokenModel.find({ userId });
-    providers = tokens
-      .map((token) => token.authProvider)
-      .filter((provider, index, self) => self.indexOf(provider) === index);
-    return providers;
-  }
 
-  async getGoogleTokenInfo(accessToken: string) {
-    try {
-      const response = await axios.get(
-        `https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`,
-      );
-      return response.data;
-    } catch (error) {
-      console.error(
-        'Error fetching token info:',
-        error.response?.data || error.message,
-      );
-      return error.response?.data || error.message;
+  async verifyResetPasswordLink(token: string, userId: string) {
+    const userToken = await this.findUserTokenByProvider(
+      userId,
+      AUTH_PROVIDERS.JWT,
+    );
+    if (!userToken || userToken.resetPasswordToken !== token) {
+      throw new BadRequestException('Invalid or expired reset password link.');
     }
-  }
 
-  async getGoogleRefreshAccessToken(refreshToken: string): Promise<string> {
-    const params = new URLSearchParams();
-    params.append('client_id', process.env.GOOGLE_CLIENT_ID);
-    params.append('client_secret', process.env.GOOGLE_CLIENT_SECRET);
-    params.append('refresh_token', refreshToken);
-    params.append('grant_type', 'refresh_token');
-
-    try {
-      const response = await axios.post(
-        'https://oauth2.googleapis.com/token',
-        params.toString(),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        },
-      );
-
-      const { access_token } = response.data;
-      return access_token;
-    } catch (error) {
-      console.error(
-        'Error getting access token:',
-        error.response?.data || error.message,
-      );
-      throw new Error('Unable to get access token');
+    if (userToken.resetPasswordExpiryDate < new Date()) {
+      throw new BadRequestException('Reset password link  has expired.');
     }
-  }
-
-  async findUserTokenByProvider(userId: string, provider: string) {
-    try {
-      const userToken = await this.tokenModel.findOne({
-        userId,
-        authProvider: provider,
-      });
-      return userToken;
-    } catch (e) {
-      throw e;
-    }
+    return true;
   }
 
   async resetPassword(

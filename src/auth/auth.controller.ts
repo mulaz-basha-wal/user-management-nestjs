@@ -19,7 +19,7 @@ import { LoginUser } from './interfaces/auth.interface';
 import { MyLogger } from 'src/my-logger/my-logger.service';
 import { errorHandler } from 'src/common/utils/apiErrorHandler';
 import { UpdateUserDTO } from 'src/user/dto/userDTOs';
-import { User } from 'src/schemas/user.schema';
+import { LinkedinAuthGuard } from './guards/linkedin.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -60,12 +60,44 @@ export class AuthController {
     }
   }
 
+  @Get('/linkedin/login')
+  loginWithLinkedin(@Res() res: Response) {
+    const linkedinAuthUrl = 'https://www.linkedin.com/oauth/v2/authorization';
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: process.env.LINKEDIN_CLIENT_ID,
+      redirect_uri: `${process.env.BASE_URL}${process.env.LINKEDIN_REDIRECT_URL}`,
+      scope: 'openid profile email w_member_social',
+    });
+
+    res.redirect(`${linkedinAuthUrl}?${params.toString()}`);
+  }
+
+  @Get('/linkedin/redirect')
+  @UseGuards(LinkedinAuthGuard)
+  async handleLinkedinRedirection(@Req() req, @Res() res: Response) {
+    try {
+      await this.authService.signInWithLinkedin(req.user, res);
+      return res.redirect(process.env.LINKEDIN_REDIRECT_URL_CLIENT);
+    } catch (error) {
+      this.logger.error('Linkedin login redirection failed', error.stack);
+      errorHandler(
+        error,
+        'Linkedin login redirection failed',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get('/logout')
   async user(@Req() request: Request, @Res() res: Response) {
     try {
       switch (request.cookies['provider']) {
         case AUTH_PROVIDERS.GOOGLE:
           await this.authService.revokeGoogleToken(request.cookies['token']);
+          break;
+        case AUTH_PROVIDERS.LINKEDIN:
+          await this.authService.revokeLinkedinToken(request.cookies['token']);
           break;
         default:
           break;
@@ -120,6 +152,24 @@ export class AuthController {
       errorHandler(
         error,
         'Failed to send reset password link',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('/reset-password/verify')
+  async verifyResetPasswordLink(
+    @Body()
+    { token, userId }: { token: string; userId: string },
+  ) {
+    try {
+      await this.authService.verifyResetPasswordLink(token, userId);
+      return { success: true };
+    } catch (error) {
+      this.logger.error('reset Password Link expired', error.stack);
+      return errorHandler(
+        error,
+        'reset Password Link expired',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

@@ -28,6 +28,13 @@ export class AuthGuard implements CanActivate {
           userId,
         );
         return true;
+      case AUTH_PROVIDERS.LINKEDIN:
+        request.user = await this.authService.validateUserWithLinkedin(
+          token,
+          userId,
+          res,
+        );
+        return true;
     }
   }
 }
