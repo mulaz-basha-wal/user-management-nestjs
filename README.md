@@ -3,30 +3,65 @@
 </p>
 
 [circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+[circleci-url]: https://circleci.com/gh/nestjs/nest 'https://skillicons.dev'
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
+<p align="center">
+  <a href="https://skillicons.dev">
+    <img src="https://skillicons.dev/icons?i=nodejs,ts,nestjs,mongodb,github,npm" />
+  </a>
 </p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+<p align="center">Basic <a href="https://github.com/nestjs/nest" target="_blank">Nest.js</a> service for users authorization and authentication using OAuth protocols.</p>
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+This repository features a User Management System developed with NestJS and MongoDB, providing complete functionality for user registration, login, and profile management. Built with the Nest framework and TypeScript, the project ensures a modular, scalable architecture and supports OAuth2 for authentication. Social sign-ins are implemented using the OAuth2 protocol, including Sign in with Google and GitHub authentication flows.
+
+## Features
+
+- User Sign-Up.
+  - Username and Password
+  - Register with Google (<a href="https://www.passportjs.org/packages/passport-google-oauth20" target="_blank">passport-google-oauth20</a>)
+  - Register with Github (<a href="https://www.passportjs.org/packages/passport-github2" target="_blank">passport-github2</a>)
+- User Sign-In.
+  - Username and Password
+  - Sign-In with Google (<a href="https://www.passportjs.org/packages/passport-google-oauth20" target="_blank">passport-google-oauth20</a>)
+  - Sign-In with Github (<a href="https://www.passportjs.org/packages/passport-github2" target="_blank">passport-github2</a>)
+- Access and Refresh Token management using JWT tokens and auto-refresh access tokens.
+- Profile Management
+  - Edit/update profile
+  - Change password
+  - Reset Password with email link (<a href="https://nodemailer.com/" target="_blank">Nodemailer</a>)
+  - Forgot Password with email link (<a href="https://nodemailer.com/" target="_blank">Nodemailer</a>)
+- Admin operations
+  - Users list with pagination and search filter
+  - Edit user
+  - Block user
+  - Delete User
+  - Change Password
+
+## Technologies Used
+  - **NestJS:** A framework for building scalable NodeJs server-side applications.
+  - **Mongoose:** For MongoDB database management and modeling.
+  - **NodeMailer:** A module for sending emails.
+  - **NestJs/jwt:** JWT token sign and verification.
+  - **Argon2:** Argon2 is a cryptographic hashing algorithm used to hash passwords > bcrypt.
+  - **passport:** A package for simplifying the OAuth flow in NodeJS.
+  - **passport-google-oauth20:** This module lets you authenticate using Google in your NodeJs applications.
+  - **passport-github2:** This module lets you authenticate using Github in your NodeJs applications.
+
 
 ## Installation
+
+- Clone / Download this repository.
+```bash
+$ git clone <repo-link>
+```
+- Node version is required as per the .nvmrc file.
+```bash
+$ nvm use <node_version>
+```
+- Create a .env file and copy required environment variables from the .env.example
+- Run the below command to install all the project dependencies.
 
 ```bash
 $ npm install
@@ -58,16 +93,29 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
+## Folder Structure
+```bash
+src/
+|-- auth/                # Authentication logic with PassportJS and OAuth flow
+|-- --- credentials/     # Username & password based auth flow
+|-- --- github/          # Github module to manage OAuth flow
+|-- --- google/          # Google module to manage OAuth flow
+|-- --- jwt/             # JWT module to manage JWT tokens
+|-- --- user/            # User module and its resource inside the folder
+|-- --- auth.module      # Auth Module and its deps
+|-- --- auth.service     # Core auth services
+|-- --- auth.controller  # Auth routes and handlers
+|-- --- auth.guard       # Authentication guards
+|-- --- auth.constants   # Auth related constants
+|-- schemas              # MongoDB collection schemas
+|-- common/              # Common functionality folder
+|-- --- constants/       # Applications related constants
+|-- --- middlewares/     # Middlewares used in the application
+|-- --- utilities/       # Common utility functions
+|-- config               # Basic application configurations
+|-- mail/                # Mail service to send emails for forgot and reset password
+|-- --- templates        # HBS templates for emails
+|-- --- mail.service     # Email sending logic
+|-- app.module.ts        # Main application file
+|-- main.ts              # Entry point of the application
+```
