@@ -1,9 +1,8 @@
-import * as bcrypt from 'bcryptjs';
-import * as jwt from 'jsonwebtoken';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { IsEmail } from 'class-validator';
 import { USER_ROLES } from 'src/common/constants/user.constants';
 import { Document } from 'mongoose';
+import * as argon2 from 'argon2';
 
 @Schema({ timestamps: true })
 export class User extends Document {
@@ -29,48 +28,29 @@ export class User extends Document {
   @Prop({ default: null })
   deletedAt: Date;
 
-  @Prop({ required: true, default: true })
+  @Prop({ required: true, default: false })
   isActive: boolean;
+
+  @Prop({ required: true, default: false })
+  isPasswordSet: boolean;
 
   @Prop({ default: () => new Date() })
   roleLastUpdatedAt: Date;
-
-  comparePassword(password: string) {
-    return bcrypt.compare(password, this.password);
-  }
-
-  generateAuthToken() {
-    const token = jwt.sign(
-      {
-        _id: this._id,
-        name: `${this.firstName} ${this.lastName}`,
-        roleId: this.userRoleId,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || '1d',
-      },
-    );
-    return token;
-  }
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-UserSchema.pre('save', async function (next) {
-  if (this.isNew || this.isModified('password')) {
-    try {
-      const salt = await bcrypt.genSalt(10);
-      const hash = await bcrypt.hash(this.password, salt);
-      this.password = hash;
-      next();
-    } catch (err) {
-      return next(err);
-    }
-  } else {
-    return next();
-  }
-});
+export const hashPasswordWithKey = async (password: string) => {
+  const combinedPassword = password + process.env.PASSWORD_HASH_CHUNK;
+  const hash = await argon2.hash(combinedPassword);
+  return hash;
+};
+
+export const verifyPasswordWithKey = async (password: string, hash: string) => {
+  const combinedPassword = password + process.env.PASSWORD_HASH_CHUNK;
+  const isSame = await argon2.verify(hash, combinedPassword);
+  return isSame;
+};
 
 UserSchema.set('toJSON', {
   transform: function (doc, record) {

@@ -3,6 +3,11 @@ export enum USER_ROLES {
   USER = 2,
 }
 
+export const USER_ROLES_BY_ID = {
+  '1': 'ADMIN',
+  '2': 'USER',
+};
+
 export const ERROR_MESSAGES = {
   USER_EXIST: 'User already exists.',
   USER_NOT_EXIST: 'User does not exists.',
